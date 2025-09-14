@@ -15,4 +15,5 @@ public class AdminController {
     public String adminReports(UserPrincipal principal) {
         return "Confidential admin reports";
     }
+
 }

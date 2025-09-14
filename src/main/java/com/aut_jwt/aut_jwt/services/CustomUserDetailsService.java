@@ -23,11 +23,15 @@ public class CustomUserDetailsService implements UserDetailsService {
         Users user = userRepository.findByUsername(username)
                 .orElseThrow(() -> new UsernameNotFoundException("Usuario no encontrado"));
 
+        List<SimpleGrantedAuthority> authorities = user.getRolesUsers().stream()
+                .map(roleUser -> new SimpleGrantedAuthority("ROLE_" + roleUser.getRole().getName()))
+                .toList();
+
         // Devolver un objeto UserDetails con los datos de seguridad
         return new User(
                 user.getUsername(),
-                user.getPassword(), // Ya debe estar codificada con BCrypt u otro encoder
-                List.of(new SimpleGrantedAuthority(user.getRole()))
+                user.getPassword(),
+                authorities
         );
     }
 }

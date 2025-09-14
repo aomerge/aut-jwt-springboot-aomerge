@@ -53,6 +53,7 @@ public class JwtTokenProviderImp implements JwtTokenProvider {
 
     @Override
     public Claims getAllClaims(String token) {
+
         return Jwts.parser()
                 .setSigningKey(jwtProperties.getSecret())
                 .parseClaimsJws(token)
