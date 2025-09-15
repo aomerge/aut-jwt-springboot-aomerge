@@ -7,6 +7,7 @@ import com.aut_jwt.aut_jwt.config.validator.groups.OnAuth;
 import com.aut_jwt.aut_jwt.config.validator.groups.OnCreate;
 import com.aut_jwt.aut_jwt.dto.AuthServideDto;
 import com.aut_jwt.aut_jwt.dto.response.AuthResponseDto;
+import com.aut_jwt.aut_jwt.entity.Users;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -30,15 +31,17 @@ public class AuthController {
     @Autowired
     private AuthenticationManager authenticationManager;
 
-    @GetMapping("test")
+    @GetMapping("/test")
     @Doc(summary = "Prueba de salud del módulo de autenticación", secured = false)
     public ResponseEntity<String> test() {
         return ResponseEntity.ok("Authenticate exitosa");
     }
 
+
     @Doc(summary = "Inicio de sesión y emisión de JWT")
     @PostMapping("/login")
     public ResponseEntity<?>  login(@Validated(OnAuth.class) @RequestBody BaseAuthValid loginRequest) {
+
         Authentication authentication = authenticationManager.authenticate(
                 new UsernamePasswordAuthenticationToken(
                             loginRequest.getUsername(),
@@ -46,7 +49,7 @@ public class AuthController {
                 )
         );
         // Si pasa, generar token
-        String token = jwtTokenProvider.createToken(loginRequest.getUsername());
+        String token = jwtTokenProvider.createToken(loginRequest.getUsername(), authentication);
         AuthResponseDto authResponse = new AuthResponseDto(token, loginRequest.getUsername());
         // Envolver respuesta
         return ResponseEntity.ok(authResponse);
@@ -56,6 +59,9 @@ public class AuthController {
     @PostMapping("/register")
     public ResponseEntity<?> register(@Validated(OnCreate.class) @RequestBody BaseAuthValid user) {
         BaseAuthValid authResponse = authServide.register(user);
-        return ResponseEntity.status(HttpStatus.CREATED).body(authResponse);
+        // Crear respuesta sin exponer datos sensibles
+        BaseAuthValid response = new BaseAuthValid();
+        response.setUsername(authResponse.getUsername());
+        return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
 }

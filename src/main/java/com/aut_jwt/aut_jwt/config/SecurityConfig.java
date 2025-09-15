@@ -27,6 +27,7 @@ public class SecurityConfig {
                     .requestMatchers("admin/**").hasRole("ADMIN")
                     .requestMatchers("reports/**").hasRole("ADMIN")
                     .requestMatchers("groups/**").hasAnyRole("USER", "ADMIN")
+                    .requestMatchers("user/**").hasAnyRole("USER","OWNER" )
                     .requestMatchers(
                             "/auth/**",
                             "/v3/api-docs/**",

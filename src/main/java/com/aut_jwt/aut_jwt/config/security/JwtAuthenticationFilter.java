@@ -18,8 +18,8 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
     @Autowired
     private JwtTokenProvider tokenProvider;
 
-    public JwtAuthenticationFilter(JwtTokenProviderImp tokenProvider) {
-        this.tokenProvider = tokenProvider;
+    public JwtAuthenticationFilter() {
+
     }
 
     private static final AntPathMatcher PATH_MATCHER = new AntPathMatcher();
@@ -51,23 +51,18 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                                     FilterChain filterChain ) throws ServletException, IOException {
 
         String token = tokenProvider.resolveToken(request);
+
         try {
-            if (token == null || !tokenProvider.validateToken(token) || !tokenProvider.validateToken(token)) {
-                response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
-                return;
+            // CAMBIO: Solo procesar si hay token válido
+            System.out.println("Claims del token: " + tokenProvider.validateToken(token));
+            if (token != null && tokenProvider.validateToken(token)) {
+                Claims claims = tokenProvider.getAllClaims(token);
+                Authentication auth = tokenProvider.getAuthentication(claims);
+                SecurityContextHolder.getContext().setAuthentication(auth);
             }
-            // 2) Obtener claims una sola vez
-            Claims claims = tokenProvider.getAllClaims(token);
-
-            // 3) Construir Authentication (RBAC/mixto/ABAC según su diseño)
-            Authentication auth = tokenProvider.getAuthentication(claims);
-
-            // 4) Poblar el contexto
-            SecurityContextHolder.getContext().setAuthentication(auth);
 
         } catch (JwtException e) {
-            response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
-            return;
+            SecurityContextHolder.clearContext();
         }
 
         filterChain.doFilter(request, response);

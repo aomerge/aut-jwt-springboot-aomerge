@@ -11,6 +11,7 @@ import org.springframework.stereotype.Component;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 
 import java.util.*;
+import java.util.stream.Collectors;
 
 @Component
 public class JwtTokenProviderImp implements JwtTokenProvider {
@@ -22,8 +23,10 @@ public class JwtTokenProviderImp implements JwtTokenProvider {
         this.jwtProperties = jwtProperties;
     }
 
-    public String createToken(String username) {
+    public String createToken(String username, Authentication auth ){
+        Map<String, Object> roles = getRolesClaimFromAuth((Authentication) auth);
         return Jwts.builder()
+                .setClaims(roles)
                 .setSubject(username)
                 .setIssuer(jwtProperties.getIssuer())
                 .setIssuedAt(new Date())
@@ -54,8 +57,9 @@ public class JwtTokenProviderImp implements JwtTokenProvider {
     @Override
     public Claims getAllClaims(String token) {
 
-        return Jwts.parser()
+        return Jwts.parserBuilder()
                 .setSigningKey(jwtProperties.getSecret())
+                .build()
                 .parseClaimsJws(token)
                 .getBody();
     }
@@ -63,7 +67,7 @@ public class JwtTokenProviderImp implements JwtTokenProvider {
     @Override
     public Authentication getAuthentication(Claims claims){
         // RBAC: roles desde "roles" (lista) o "role" (único)
-                List<String> roles = Optional.ofNullable(claims.get("roles"))
+        List<String> roles = Optional.ofNullable(claims.get("roles"))
                 .map(v -> (v instanceof List<?> l) ? l.stream().map(String::valueOf).toList()
                         : List.of(String.valueOf(v)))
                 .orElseGet(() -> {
@@ -80,15 +84,15 @@ public class JwtTokenProviderImp implements JwtTokenProvider {
 
         // ABAC/mixto: atributos en el principal (si los usa)
         Map<String, Object> attrs = Map.of(
-                "department", claims.get("department"),
-                "level",      claims.get("level"),
-                "canDelete",  claims.get("canDelete"),
-                "trusted",    claims.get("trusted")
+                "department", Optional.ofNullable(claims.get("department")).orElse(""),
+                "level", Optional.ofNullable(claims.get("level")).orElse(""),
+                "canDelete", Optional.ofNullable(claims.get("canDelete")).orElse(false),
+                "trusted", Optional.ofNullable(claims.get("trusted")).orElse(false)
         );
         var principal = new UserPrincipal(claims.getSubject(), attrs);
 
-        var auth = new UsernamePasswordAuthenticationToken(principal, null, authorities);
-        return auth;
+        return new UsernamePasswordAuthenticationToken(principal, null, authorities);
+
     }
 
     private boolean isTokenExpired(String token) {
@@ -98,5 +102,13 @@ public class JwtTokenProviderImp implements JwtTokenProvider {
         } catch (JwtException e) {
             return true; // If there's an error parsing the token, consider it expired
         }
+    }
+
+    private  Map<String, Object> getRolesClaimFromAuth(Authentication auth) {
+        Map<String, Object> claims = new HashMap<>();
+        claims.put("roles", auth.getAuthorities().stream()
+                .map(authority -> authority.getAuthority())
+                .collect(Collectors.toList()));
+        return claims;
     }
 }
